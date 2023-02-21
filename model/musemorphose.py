@@ -91,6 +91,7 @@ class MuseMorphose(nn.Module):
       enc_n_layer, enc_n_head, enc_d_model, enc_d_ff, d_vae_latent, enc_dropout, enc_activation
     )
 
+    # Attr를 넣냐 안 넣냐에 따라 디코더에서 c_k의 차원이 달라짐.
     self.use_attr_cls = use_attr_cls
     if use_attr_cls:
       self.decoder = VAETransformerDecoder(
@@ -160,7 +161,7 @@ class MuseMorphose(nn.Module):
   # dec_seg_emb_cat = concat (dec_seg_emb, a)
   # dec_inp과 dec_seg_emb_cat을 디코더에 집어넣으면 L번째 hidden layer 출력됨.
   # 이것을 projection 시켜서 얻은 dec_logits 반환
-  def forward(self, enc_inp, dec_inp, dec_inp_bar_pos, rfreq_cls=None, polyph_cls=None, padding_mask=None):
+  def forward(self, enc_inp, dec_inp, dec_inp_bar_pos, attr_cls_list=None, padding_mask=None):
     # [shape of enc_inp] (seqlen_per_bar, bsize, n_bars_per_sample)
     enc_bt_size, enc_n_bars = enc_inp.size(1), enc_inp.size(2)
     enc_token_emb = self.token_emb(enc_inp)
@@ -195,7 +196,11 @@ class MuseMorphose(nn.Module):
       for b, (st, ed) in enumerate(zip(dec_inp_bar_pos[n, :-1], dec_inp_bar_pos[n, 1:])):
         dec_seg_emb[st:ed, n, :] = vae_latent_reshaped[n, b, :]
 
-    if rfreq_cls is not None and polyph_cls is not None and self.use_attr_cls:
+
+    # 여기에서 attribute 정수값을 embedding 값으로 바꿔줌.
+    # 임베딩하고 나서, seg_emb와 concat해줌.
+    # Attribute를 list로 전달해줄 것이므로, for문을 사용하는 것이 좋을 듯.
+    if attr_cls_list is not None and self.use_attr_cls:
       dec_rfreq_emb = self.rfreq_attr_emb(rfreq_cls)    # Rhythmical intensity
       dec_polyph_emb = self.polyph_attr_emb(polyph_cls)   # Polyphony
       dec_seg_emb_cat = torch.cat([dec_seg_emb, dec_rfreq_emb, dec_polyph_emb], dim=-1)  # z랑 a 붙임

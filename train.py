@@ -83,12 +83,16 @@ def train_model(epoch, model, dloader, dloader_val, optim, sched):
     batch_inp_bar_pos = batch_samples['bar_pos'].to(device)
     batch_inp_lens = batch_samples['length']
     batch_padding_mask = batch_samples['enc_padding_mask'].to(device)
+    
+    # Attiribute 부분. 수정 필요.
     batch_rfreq_cls = batch_samples['rhymfreq_cls'].permute(1, 0).to(device)
     batch_polyph_cls = batch_samples['polyph_cls'].permute(1, 0).to(device)
 
     global trained_steps
     trained_steps += 1
 
+    # 여기에서 condition 넣는 부분을 바꿀 필요가 있음.
+    # batch_rfreq_cls와 batch_polyph_cls를 다른 것으로 바꿔야 함.
     mu, logvar, dec_logits = model(
       batch_enc_inp, batch_dec_inp, 
       batch_inp_bar_pos, batch_rfreq_cls, batch_polyph_cls,
