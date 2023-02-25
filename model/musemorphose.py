@@ -58,8 +58,7 @@ class MuseMorphose(nn.Module):
     d_vae_latent, d_embed, n_token,
     enc_dropout=0.1, enc_activation='relu',
     dec_dropout=0.1, dec_activation='relu',
-    d_rfreq_emb=32, d_polyph_emb=32,
-    n_rfreq_cls=8, n_polyph_cls=8,
+    n_attrs=11, d_attr_emb=32, n_attr_cls=8, 
     is_training=True, use_attr_cls=True,
     cond_mode='in-attn'
   ):
@@ -95,7 +94,7 @@ class MuseMorphose(nn.Module):
     self.use_attr_cls = use_attr_cls
     if use_attr_cls:
       self.decoder = VAETransformerDecoder(
-        dec_n_layer, dec_n_head, dec_d_model, dec_d_ff, d_vae_latent + d_polyph_emb + d_rfreq_emb,
+        dec_n_layer, dec_n_head, dec_d_model, dec_d_ff, d_vae_latent + n_attrs * d_attr_emb,
         dropout=dec_dropout, activation=dec_activation,
         cond_mode=cond_mode
       )
@@ -107,13 +106,18 @@ class MuseMorphose(nn.Module):
       )
 
     if use_attr_cls:
-      self.d_rfreq_emb = d_rfreq_emb
-      self.d_polyph_emb = d_polyph_emb
-      self.rfreq_attr_emb = TokenEmbedding(n_rfreq_cls, d_rfreq_emb, d_rfreq_emb)
-      self.polyph_attr_emb = TokenEmbedding(n_polyph_cls, d_polyph_emb, d_polyph_emb)
+      self.n_attrs = n_attrs
+      self.d_attr_emb = d_attr_emb
+      
+      # 임베딩 레이어 11개를 만들어 둔다.
+      # Attr에 따라서 임베딩 차원을 다르게 할 여지도 있을 것 같음...
+      self.attr_emb_layer = []
+      for _ in range(n_attrs):
+        self.attr_emb_layer.append(TokenEmbedding(n_attr_cls, d_attr_emb, d_attr_emb)) 
+      #self.rfreq_attr_emb = TokenEmbedding(n_rfreq_cls, d_rfreq_emb, d_rfreq_emb)
+      #self.polyph_attr_emb = TokenEmbedding(n_polyph_cls, d_polyph_emb, d_polyph_emb)
     else:
-      self.rfreq_attr_emb = None
-      self.polyph_attr_emb = None
+      self.attr_emb_layer = None
 
     self.emb_dropout = nn.Dropout(self.enc_dropout)
     self.apply(weights_init)
@@ -201,9 +205,13 @@ class MuseMorphose(nn.Module):
     # 임베딩하고 나서, seg_emb와 concat해줌.
     # Attribute를 list로 전달해줄 것이므로, for문을 사용하는 것이 좋을 듯.
     if attr_cls_list is not None and self.use_attr_cls:
-      dec_rfreq_emb = self.rfreq_attr_emb(rfreq_cls)    # Rhythmical intensity
-      dec_polyph_emb = self.polyph_attr_emb(polyph_cls)   # Polyphony
-      dec_seg_emb_cat = torch.cat([dec_seg_emb, dec_rfreq_emb, dec_polyph_emb], dim=-1)  # z랑 a 붙임
+      concat_list = [dec_seg_emb]
+      for attr_cls, layer in zip(attr_cls_list, self.attr_emb_layer):
+        concat_list.append(layer(attr_cls))
+      dec_seg_emb_cat = torch.cat(concat_list, dim=-1)
+      #dec_rfreq_emb = self.rfreq_attr_emb(rfreq_cls)    # Rhythmical intensity
+      #dec_polyph_emb = self.polyph_attr_emb(polyph_cls)   # Polyphony
+      #dec_seg_emb_cat = torch.cat([dec_seg_emb, dec_rfreq_emb, dec_polyph_emb], dim=-1)  # z랑 a 붙임
     else:
       dec_seg_emb_cat = dec_seg_emb
 

@@ -52,10 +52,12 @@ if __name__ == "__main__":
   if not os.path.exists(rhythm_out_dir):
     os.makedirs(rhythm_out_dir)  
 
+  # p: 노래 한 곡?
   for p in pieces:
     bar_pos, events = pickle_load(os.path.join(data_dir, p))
     events = events[ :bar_pos[-1] ]
 
+    # Attribute score
     polyph_raw = np.reshape(
       compute_polyphonicity(events, n_bars=len(bar_pos)), (-1, 16)
     )
