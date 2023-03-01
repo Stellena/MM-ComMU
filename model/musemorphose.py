@@ -56,9 +56,9 @@ class MuseMorphose(nn.Module):
   def __init__(self, enc_n_layer, enc_n_head, enc_d_model, enc_d_ff, 
     dec_n_layer, dec_n_head, dec_d_model, dec_d_ff,
     d_vae_latent, d_embed, n_token,
+    n_attrs, d_attr_emb, n_attr_cls,        # n_attr_cls: 각 attributes의 class 수. 리스트의 형태이다.
     enc_dropout=0.1, enc_activation='relu',
     dec_dropout=0.1, dec_activation='relu',
-    n_attrs=11, d_attr_emb=32, n_attr_cls=8, 
     is_training=True, use_attr_cls=True,
     cond_mode='in-attn'
   ):
@@ -112,8 +112,8 @@ class MuseMorphose(nn.Module):
       # 임베딩 레이어 11개를 만들어 둔다.
       # Attr에 따라서 임베딩 차원을 다르게 할 여지도 있을 것 같음...
       self.attr_emb_layer = []
-      for _ in range(n_attrs):
-        self.attr_emb_layer.append(TokenEmbedding(n_attr_cls, d_attr_emb, d_attr_emb)) 
+      for i in range(n_attrs):
+        self.attr_emb_layer.append(TokenEmbedding(n_attr_cls[i], d_attr_emb, d_attr_emb)) 
       #self.rfreq_attr_emb = TokenEmbedding(n_rfreq_cls, d_rfreq_emb, d_rfreq_emb)
       #self.polyph_attr_emb = TokenEmbedding(n_polyph_cls, d_polyph_emb, d_polyph_emb)
     else:
